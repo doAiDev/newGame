@@ -107,6 +107,6 @@ class GameOverScreen extends StatelessWidget {
           ),
         ),
       ],
-    ),;
+    );
   }
 }
