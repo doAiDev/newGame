@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../ads/ad_manager.dart';
 import '../core/theme.dart';
 import '../widgets/neon_button.dart';
 import '../widgets/neon_text.dart';
@@ -31,11 +30,8 @@ class GameOverScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Crash title
                 NeonText('CRASH!', fontSize: 48, color: NeonColors.pink, glowRadius: 30),
                 const SizedBox(height: 40),
-
-                // Stats card
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -54,25 +50,18 @@ class GameOverScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 32),
-
-                // Revive with ad
-                if (AdManager().isRewardedReady) ...[
-                  SizedBox(
-                    width: double.infinity,
-                    child: NeonButton(
-                      label: '  WATCH AD TO REVIVE',
-                      icon: Icons.play_circle_fill,
-                      color: NeonColors.mint,
-                      fontSize: 15,
-                      onTap: onRevive,
-                    ),
+                SizedBox(
+                  width: double.infinity,
+                  child: NeonButton(
+                    label: 'REVIVE',
+                    icon: Icons.favorite,
+                    color: NeonColors.mint,
+                    fontSize: 15,
+                    onTap: onRevive,
                   ),
-                  const SizedBox(height: 12),
-                ],
-
-                // Bottom buttons
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -118,6 +107,6 @@ class GameOverScreen extends StatelessWidget {
           ),
         ),
       ],
-    );
+    ),;
   }
 }

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flame/game.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../core/theme.dart';
-import '../ads/ad_manager.dart';
 import '../game/neon_drive_game.dart';
 import '../widgets/neon_button.dart';
 import '../widgets/neon_text.dart';
@@ -17,8 +15,6 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late NeonDriveGame _game;
-  late BannerAd _bannerAd;
-  bool _bannerLoaded = false;
   bool _gameOver = false;
   int _coins = 0;
   double _distance = 0;
@@ -39,21 +35,9 @@ class _GameScreenState extends State<GameScreen> {
         }
       },
     );
-
-    _bannerAd = AdManager().createBannerAd()
-      ..load().then((_) {
-        if (mounted) setState(() => _bannerLoaded = true);
-      });
-  }
-
-  @override
-  void dispose() {
-    _bannerAd.dispose();
-    super.dispose();
   }
 
   void _handleGameOver() {
-    AdManager().showInterstitialOnGameOver();
     if (mounted) setState(() => _gameOver = true);
   }
 
@@ -63,10 +47,7 @@ class _GameScreenState extends State<GameScreen> {
       backgroundColor: NeonColors.background,
       body: Stack(
         children: [
-          // Game canvas
           GameWidget(game: _game),
-
-          // HUD
           if (!_gameOver)
             SafeArea(
               child: Column(
@@ -74,16 +55,9 @@ class _GameScreenState extends State<GameScreen> {
                   _buildHUD(),
                   const Spacer(),
                   _buildControls(),
-                  if (_bannerLoaded)
-                    SizedBox(
-                      height: _bannerAd.size.height.toDouble(),
-                      child: AdWidget(ad: _bannerAd),
-                    ),
                 ],
               ),
             ),
-
-          // Game over overlay
           if (_gameOver)
             GameOverScreen(
               coins: _coins,
@@ -102,7 +76,6 @@ class _GameScreenState extends State<GameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
-          // Lives
           Row(
             children: List.generate(3, (i) => Padding(
               padding: const EdgeInsets.only(right: 4),
@@ -117,7 +90,6 @@ class _GameScreenState extends State<GameScreen> {
             )),
           ),
           const Spacer(),
-          // Coins
           Row(
             children: [
               const Icon(Icons.monetization_on, color: NeonColors.yellow, size: 18),
@@ -133,7 +105,6 @@ class _GameScreenState extends State<GameScreen> {
             ],
           ),
           const SizedBox(width: 16),
-          // Distance
           Text(
             '${_distance.toStringAsFixed(1)} km',
             style: const TextStyle(
@@ -143,7 +114,6 @@ class _GameScreenState extends State<GameScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          // Pause
           GestureDetector(
             onTap: () {
               _game.pause();
@@ -205,10 +175,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleRevive() {
-    AdManager().showRewardedForRevive(onRewarded: () {
-      setState(() => _gameOver = false);
-      _game.revive();
-    });
+    setState(() => _gameOver = false);
+    _game.revive();
   }
 
   void _handleRestart() {
