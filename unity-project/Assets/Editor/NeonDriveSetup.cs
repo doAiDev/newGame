@@ -20,9 +20,7 @@ public class NeonDriveSetup : EditorWindow
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        // 스프라이트 텍스쳐 폴더를 가장 먼저 생성
         EnsurePhysicalFolder(Application.dataPath + "/Textures");
-        EnsurePhysicalFolder(Application.dataPath + "/../Assets/Prefabs");
 
         var cam = Camera.main;
         if (cam != null)
@@ -60,7 +58,6 @@ public class NeonDriveSetup : EditorWindow
             new Vector3(0.75f, 1.3f, 1f),
             new Color(0f, 1f, 0.78f));
 
-        // [RequireComponent(Rigidbody2D)] 로 인해 PlayerController AddComponent 시 Rigidbody2D 자동 추가
         var pc = player.AddComponent<PlayerController>();
         pc.LaneWidth = 1.4f;
         pc.TotalLanes = 4;
@@ -124,7 +121,6 @@ public class NeonDriveSetup : EditorWindow
         return go;
     }
 
-    // 응용프로그램 데이터 경로를 사용해 실제 파일 시스템에 PNG 저장
     static Sprite GetOrCreateWhiteSprite()
     {
         const string assetPath = "Assets/Textures/white_square.png";
@@ -233,6 +229,7 @@ public class NeonDriveSetup : EditorWindow
         scaler.referenceResolution = new Vector2(1080, 1920);
         canvasGO.AddComponent<GraphicRaycaster>();
 
+        // HUD
         var hud = new GameObject("HUD");
         hud.transform.SetParent(canvasGO.transform, false);
         SetFullStretch(hud);
@@ -261,6 +258,7 @@ public class NeonDriveSetup : EditorWindow
             heartImages[i] = img;
         }
 
+        // GameOver Panel
         var goPanel = MakePanel(canvasGO, "GameOverPanel", new Color(0.027f, 0.027f, 0.078f, 0.95f));
         MakeTMPText(goPanel, "CrashText",   "CRASH!",  new Vector2(0.5f, 0.65f), Vector2.zero, 80, new Color(1f, 0.18f, 0.47f));
         var goCoinsGO = MakeTMPText(goPanel, "GOCoinsText", "0",       new Vector2(0.5f, 0.52f), Vector2.zero, 44, Color.yellow);
@@ -270,6 +268,14 @@ public class NeonDriveSetup : EditorWindow
         MakeButton(goPanel, "HomeBtn",   "HOME",   new Vector2(0.5f, 0.12f), new Color(0.4f, 0.4f, 0.5f));
         goPanel.SetActive(false);
 
+        // Pause Panel
+        var pausePanel = MakePanel(canvasGO, "PausePanel", new Color(0.027f, 0.027f, 0.078f, 0.92f));
+        MakeTMPText(pausePanel, "PauseTitle", "PAUSED", new Vector2(0.5f, 0.6f), Vector2.zero, 80, new Color(0f, 1f, 0.78f));
+        MakeButton(pausePanel, "ResumeBtn", "RESUME", new Vector2(0.5f, 0.45f), new Color(0f, 1f, 0.78f));
+        MakeButton(pausePanel, "PauseHomeBtn", "HOME", new Vector2(0.5f, 0.33f), new Color(0.4f, 0.4f, 0.5f));
+        pausePanel.SetActive(false);
+
+        // Joystick
         var jGO = new GameObject("Joystick");
         jGO.transform.SetParent(canvasGO.transform, false);
         var jRect = jGO.AddComponent<RectTransform>();
@@ -300,6 +306,7 @@ public class NeonDriveSetup : EditorWindow
         joystick.Handle = hRect;
         joystick.HorizontalOnly = true;
 
+        // UIManager
         var uiGO = new GameObject("UIManager");
         uiGO.transform.SetParent(canvasGO.transform, false);
         var uiMgr = uiGO.AddComponent<UIManager>();
@@ -309,6 +316,7 @@ public class NeonDriveSetup : EditorWindow
         uiMgr.GameOverPanel  = goPanel;
         uiMgr.GOCoinsText    = goCoinsGO.GetComponent<TextMeshProUGUI>();
         uiMgr.GODistanceText = goDistGO.GetComponent<TextMeshProUGUI>();
+        uiMgr.PausePanel     = pausePanel;
     }
 
     // -------------------------------------------------------
