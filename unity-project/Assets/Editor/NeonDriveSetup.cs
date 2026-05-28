@@ -6,7 +6,7 @@ using TMPro;
 
 public class NeonDriveSetup : EditorWindow
 {
-    [MenuItem("NeonDrive/게임 씨 자동 세틄")]
+    [MenuItem("NeonDrive/게임 씨 자동 세팅")]
     public static void SetupScene()
     {
         if (!EditorUtility.DisplayDialog("Neon Drive Setup",
@@ -61,11 +61,15 @@ public class NeonDriveSetup : EditorWindow
             new Vector3(0.75f, 1.3f, 1f),
             new Color(0f, 1f, 0.78f));
 
+        // PlayerController 커포넌트는 [RequireComponent(Rigidbody2D)] 이라
+        // AddComponent 시 Rigidbody2D가 자동 추가됨
         var pc = player.AddComponent<PlayerController>();
         pc.LaneWidth = 1.4f;
         pc.TotalLanes = 4;
 
-        var rb = player.AddComponent<Rigidbody2D>();
+        // 이미 자동 추가된 Rigidbody2D를 GetComponent로 가져옴
+        var rb = player.GetComponent<Rigidbody2D>();
+        if (rb == null) rb = player.AddComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
 
@@ -95,7 +99,7 @@ public class NeonDriveSetup : EditorWindow
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorUtility.DisplayDialog("Neon Drive Setup",
-            "✅ 세팅 완료!\nCtrl+S 로 저장하고 플레이 뺄튼을 눌러보세요!",
+            "✅ 세팅 완료!\nCtrl+S 로 저장하고 플레이 버튼을 눌러보세요!",
             "확인");
     }
 
@@ -128,7 +132,6 @@ public class NeonDriveSetup : EditorWindow
 
     static Sprite GetWhiteSprite()
     {
-        // Unity 내장 흰 사각형 스프라이트
         var sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd");
         if (sprite != null) return sprite;
         sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
@@ -145,11 +148,9 @@ public class NeonDriveSetup : EditorWindow
         var c = go.AddComponent<BoxCollider2D>();
         c.isTrigger = true;
 
-        // 태그는 저장 후 설정
         PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
 
-        // 태그 적용
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         if (prefab != null) prefab.tag = "Traffic";
         EditorUtility.SetDirty(prefab);
