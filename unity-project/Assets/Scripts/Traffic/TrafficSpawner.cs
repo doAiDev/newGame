@@ -10,10 +10,18 @@ public class TrafficSpawner : MonoBehaviour
 
     private float _timer;
 
-    float Interval => BaseInterval / Mathf.Max(1f, GameManager.Instance.Speed / 6f);
+    float Interval
+    {
+        get
+        {
+            if (GameManager.Instance == null) return BaseInterval;
+            return BaseInterval / Mathf.Max(1f, GameManager.Instance.Speed / 6f);
+        }
+    }
 
     void Update()
     {
+        if (GameManager.Instance == null) return;
         if (CarPrefabs == null || CarPrefabs.Length == 0) return;
         _timer += Time.deltaTime;
         if (_timer >= Interval) { Spawn(); _timer = 0f; }

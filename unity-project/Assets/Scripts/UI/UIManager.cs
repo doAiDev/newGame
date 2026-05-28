@@ -19,12 +19,18 @@ public class UIManager : MonoBehaviour
 
     void Start()
     {
+        if (GameManager.Instance == null)
+        {
+            Debug.LogError("[UIManager] GameManager.Instance is null. Make sure GameManager exists in the scene.");
+            return;
+        }
+
         GameManager.Instance.OnStatsUpdate  += UpdateStats;
         GameManager.Instance.OnGameOver     += ShowGameOver;
         GameManager.Instance.OnLivesChanged += UpdateLives;
 
-        GameOverPanel.SetActive(false);
-        PausePanel.SetActive(false);
+        if (GameOverPanel) GameOverPanel.SetActive(false);
+        if (PausePanel)    PausePanel.SetActive(false);
         UpdateLives(GameManager.Instance.Lives);
     }
 
@@ -38,7 +44,7 @@ public class UIManager : MonoBehaviour
 
     void UpdateStats(int coins, float dist)
     {
-        if (CoinsText)   CoinsText.text   = coins.ToString("N0");
+        if (CoinsText)    CoinsText.text    = coins.ToString("N0");
         if (DistanceText) DistanceText.text = $"{dist:F1} km";
     }
 
@@ -50,24 +56,24 @@ public class UIManager : MonoBehaviour
 
     void ShowGameOver()
     {
-        GameOverPanel.SetActive(true);
+        if (GameOverPanel) GameOverPanel.SetActive(true);
         if (GOCoinsText)    GOCoinsText.text    = GameManager.Instance.Coins.ToString("N0");
         if (GODistanceText) GODistanceText.text = $"{GameManager.Instance.Distance:F2} km";
     }
 
-    public void OnRevive()  { GameManager.Instance.Revive(); GameOverPanel.SetActive(false); }
+    public void OnRevive()  { GameManager.Instance.Revive(); if (GameOverPanel) GameOverPanel.SetActive(false); }
     public void OnRestart() => GameManager.Instance.RestartGame();
     public void OnHome()    => GameManager.Instance.GoToMainMenu();
 
     public void OnPause()
     {
         GameManager.Instance.Pause();
-        PausePanel.SetActive(true);
+        if (PausePanel) PausePanel.SetActive(true);
     }
 
     public void OnResume()
     {
         GameManager.Instance.Resume();
-        PausePanel.SetActive(false);
+        if (PausePanel) PausePanel.SetActive(false);
     }
 }
