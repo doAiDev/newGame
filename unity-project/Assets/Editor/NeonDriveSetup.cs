@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
+using System.IO;
 
 public class NeonDriveSetup : EditorWindow
 {
@@ -18,6 +19,10 @@ public class NeonDriveSetup : EditorWindow
         AddTag("Coin");
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
+
+        // 스프라이트 텍스쳐 폴더를 가장 먼저 생성
+        EnsurePhysicalFolder(Application.dataPath + "/Textures");
+        EnsurePhysicalFolder(Application.dataPath + "/../Assets/Prefabs");
 
         var cam = Camera.main;
         if (cam != null)
@@ -79,8 +84,7 @@ public class NeonDriveSetup : EditorWindow
             cs.AddComponent<CoinSpawner>();
         }
 
-        EnsureFolder("Assets/Prefabs");
-        EnsureFolder("Assets/Textures");
+        EnsureAssetFolder("Assets/Prefabs");
         CreateTrafficPrefab();
         CreateCoinPrefab();
 
@@ -120,11 +124,11 @@ public class NeonDriveSetup : EditorWindow
         return go;
     }
 
-    // 흐언 사각형 스프라이트 (Assets/Textures/white_square.png 생성)
+    // 응용프로그램 데이터 경로를 사용해 실제 파일 시스템에 PNG 저장
     static Sprite GetOrCreateWhiteSprite()
     {
-        const string path = "Assets/Textures/white_square.png";
-        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        const string assetPath = "Assets/Textures/white_square.png";
+        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
         if (existing != null) return existing;
 
         var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
@@ -132,24 +136,21 @@ public class NeonDriveSetup : EditorWindow
         for (int i = 0; i < 16; i++) pixels[i] = Color.white;
         tex.SetPixels(pixels);
         tex.Apply();
-        System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
-        AssetDatabase.ImportAsset(path);
 
-        var ti = AssetImporter.GetAtPath(path) as TextureImporter;
-        if (ti != null)
-        {
-            ti.textureType = TextureImporterType.Sprite;
-            ti.spritePivot = new Vector2(0.5f, 0.5f);
-            AssetDatabase.ImportAsset(path);
-        }
-        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        string fullPath = Path.Combine(Application.dataPath, "Textures", "white_square.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+        File.WriteAllBytes(fullPath, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(assetPath);
+
+        var ti = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (ti != null) { ti.textureType = TextureImporterType.Sprite; AssetDatabase.ImportAsset(assetPath); }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
-    // 흐언 원형 스프라이트 (Assets/Textures/white_circle.png 생성)
     static Sprite GetOrCreateCircleSprite()
     {
-        const string path = "Assets/Textures/white_circle.png";
-        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        const string assetPath = "Assets/Textures/white_circle.png";
+        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
         if (existing != null) return existing;
 
         const int size = 64;
@@ -159,23 +160,19 @@ public class NeonDriveSetup : EditorWindow
         for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
-                float dx = x - center;
-                float dy = y - center;
-                float dist = Mathf.Sqrt(dx * dx + dy * dy);
-                tex.SetPixel(x, y, dist <= radius ? Color.white : Color.clear);
+                float dx = x - center, dy = y - center;
+                tex.SetPixel(x, y, Mathf.Sqrt(dx * dx + dy * dy) <= radius ? Color.white : Color.clear);
             }
         tex.Apply();
-        System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
-        AssetDatabase.ImportAsset(path);
 
-        var ti = AssetImporter.GetAtPath(path) as TextureImporter;
-        if (ti != null)
-        {
-            ti.textureType = TextureImporterType.Sprite;
-            ti.spritePivot = new Vector2(0.5f, 0.5f);
-            AssetDatabase.ImportAsset(path);
-        }
-        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        string fullPath = Path.Combine(Application.dataPath, "Textures", "white_circle.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath));
+        File.WriteAllBytes(fullPath, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(assetPath);
+
+        var ti = AssetImporter.GetAtPath(assetPath) as TextureImporter;
+        if (ti != null) { ti.textureType = TextureImporterType.Sprite; AssetDatabase.ImportAsset(assetPath); }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
     static void CreateTrafficPrefab()
@@ -199,8 +196,7 @@ public class NeonDriveSetup : EditorWindow
         AssetDatabase.SaveAssets();
 
         var spawner = Object.FindObjectOfType<TrafficSpawner>();
-        if (spawner != null)
-            spawner.CarPrefabs = new GameObject[] { prefab };
+        if (spawner != null) spawner.CarPrefabs = new GameObject[] { prefab };
     }
 
     static void CreateCoinPrefab()
@@ -209,7 +205,7 @@ public class NeonDriveSetup : EditorWindow
         var go = new GameObject("Coin");
         go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = GetOrCreateCircleSprite();  // 코드로 생성한 원형 스프라이트
+        sr.sprite = GetOrCreateCircleSprite();
         sr.color = new Color(1f, 0.84f, 0f);
         go.AddComponent<CoinController>();
         var c = go.AddComponent<CircleCollider2D>();
@@ -224,8 +220,7 @@ public class NeonDriveSetup : EditorWindow
         AssetDatabase.SaveAssets();
 
         var spawner = Object.FindObjectOfType<CoinSpawner>();
-        if (spawner != null)
-            spawner.CoinPrefab = prefab;
+        if (spawner != null) spawner.CoinPrefab = prefab;
     }
 
     static void SetupUI()
@@ -386,13 +381,19 @@ public class NeonDriveSetup : EditorWindow
         if (existing != null) Object.DestroyImmediate(existing);
     }
 
-    static void EnsureFolder(string path)
+    static void EnsureAssetFolder(string path)
     {
         if (!AssetDatabase.IsValidFolder(path))
         {
             var parts = path.Split('/');
             AssetDatabase.CreateFolder(parts[0], parts[1]);
         }
+    }
+
+    static void EnsurePhysicalFolder(string absolutePath)
+    {
+        if (!Directory.Exists(absolutePath))
+            Directory.CreateDirectory(absolutePath);
     }
 
     static void AddTag(string tag)
