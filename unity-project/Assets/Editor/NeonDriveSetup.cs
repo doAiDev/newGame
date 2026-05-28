@@ -55,7 +55,7 @@ public class NeonDriveSetup : EditorWindow
             new Vector3(0.75f, 1.3f, 1f),
             new Color(0f, 1f, 0.78f));
 
-        // [RequireComponent(Rigidbody2D)] 로 인해 PlayerController 추가 시 Rigidbody2D 자동 생성됨
+        // [RequireComponent(Rigidbody2D)] 로 인해 PlayerController AddComponent 시 Rigidbody2D 자동 추가
         var pc = player.AddComponent<PlayerController>();
         pc.LaneWidth = 1.4f;
         pc.TotalLanes = 4;
@@ -80,6 +80,7 @@ public class NeonDriveSetup : EditorWindow
         }
 
         EnsureFolder("Assets/Prefabs");
+        EnsureFolder("Assets/Textures");
         CreateTrafficPrefab();
         CreateCoinPrefab();
 
@@ -91,6 +92,8 @@ public class NeonDriveSetup : EditorWindow
             "✅ 세팅 완료!\nCtrl+S 로 저장하고 플레이 버튼을 눌러보세요!",
             "확인");
     }
+
+    // -------------------------------------------------------
 
     static void CreateRoad(string name, Vector3 pos)
     {
@@ -112,33 +115,77 @@ public class NeonDriveSetup : EditorWindow
         go.transform.position = pos;
         go.transform.localScale = scale;
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = GetWhiteSprite();
+        sr.sprite = GetOrCreateWhiteSprite();
         sr.color = color;
         return go;
     }
 
-    static Sprite GetWhiteSprite()
+    // 흐언 사각형 스프라이트 (Assets/Textures/white_square.png 생성)
+    static Sprite GetOrCreateWhiteSprite()
     {
-        var s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd");
-        if (s != null) return s;
-        s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        return s;
+        const string path = "Assets/Textures/white_square.png";
+        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (existing != null) return existing;
+
+        var tex = new Texture2D(4, 4, TextureFormat.RGBA32, false);
+        var pixels = new Color[16];
+        for (int i = 0; i < 16; i++) pixels[i] = Color.white;
+        tex.SetPixels(pixels);
+        tex.Apply();
+        System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(path);
+
+        var ti = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (ti != null)
+        {
+            ti.textureType = TextureImporterType.Sprite;
+            ti.spritePivot = new Vector2(0.5f, 0.5f);
+            AssetDatabase.ImportAsset(path);
+        }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
-    static Sprite GetCircleSprite()
+    // 흐언 원형 스프라이트 (Assets/Textures/white_circle.png 생성)
+    static Sprite GetOrCreateCircleSprite()
     {
-        // UI Knob 스프라이트 (원형)
-        var s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
-        if (s != null) return s;
-        // 폴백: 사각형 스프라이트 사용
-        return GetWhiteSprite();
+        const string path = "Assets/Textures/white_circle.png";
+        var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        if (existing != null) return existing;
+
+        const int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        float center = size / 2f - 0.5f;
+        float radius = size / 2f - 1f;
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = x - center;
+                float dy = y - center;
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                tex.SetPixel(x, y, dist <= radius ? Color.white : Color.clear);
+            }
+        tex.Apply();
+        System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+        AssetDatabase.ImportAsset(path);
+
+        var ti = AssetImporter.GetAtPath(path) as TextureImporter;
+        if (ti != null)
+        {
+            ti.textureType = TextureImporterType.Sprite;
+            ti.spritePivot = new Vector2(0.5f, 0.5f);
+            AssetDatabase.ImportAsset(path);
+        }
+        return AssetDatabase.LoadAssetAtPath<Sprite>(path);
     }
 
     static void CreateTrafficPrefab()
     {
         const string path = "Assets/Prefabs/TrafficCar.prefab";
-        var go = CreateSquareSprite("TrafficCar", Vector3.zero,
-            new Vector3(0.75f, 1.3f, 1f), new Color(1f, 0.18f, 0.47f));
+        var go = new GameObject("TrafficCar");
+        go.transform.localScale = new Vector3(0.75f, 1.3f, 1f);
+        var sr = go.AddComponent<SpriteRenderer>();
+        sr.sprite = GetOrCreateWhiteSprite();
+        sr.color = new Color(1f, 0.18f, 0.47f);
         go.AddComponent<TrafficCar>();
         var c = go.AddComponent<BoxCollider2D>();
         c.isTrigger = true;
@@ -162,7 +209,7 @@ public class NeonDriveSetup : EditorWindow
         var go = new GameObject("Coin");
         go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = GetCircleSprite();  // Knob.psd 원형 스프라이트
+        sr.sprite = GetOrCreateCircleSprite();  // 코드로 생성한 원형 스프라이트
         sr.color = new Color(1f, 0.84f, 0f);
         go.AddComponent<CoinController>();
         var c = go.AddComponent<CircleCollider2D>();
@@ -269,6 +316,9 @@ public class NeonDriveSetup : EditorWindow
         uiMgr.GODistanceText = goDistGO.GetComponent<TextMeshProUGUI>();
     }
 
+    // -------------------------------------------------------
+    // 헬퍼
+
     static GameObject MakePanel(GameObject parent, string name, Color color)
     {
         var go = new GameObject(name);
@@ -300,8 +350,7 @@ public class NeonDriveSetup : EditorWindow
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
-        var img = go.AddComponent<Image>();
-        img.color = new Color(color.r * 0.1f, color.g * 0.1f, color.b * 0.1f, 0.9f);
+        go.AddComponent<Image>().color = new Color(color.r * 0.1f, color.g * 0.1f, color.b * 0.1f, 0.9f);
         go.AddComponent<Button>();
         var r = go.GetComponent<RectTransform>();
         r.anchorMin = new Vector2(anchor.x - 0.22f, anchor.y);
