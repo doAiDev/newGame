@@ -14,13 +14,11 @@ public class NeonDriveSetup : EditorWindow
             "세팅 시작", "취소"))
             return;
 
-        // 태그 먼저 추가 및 저장
         AddTag("Traffic");
         AddTag("Coin");
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        // 카메라 2D 설정
         var cam = Camera.main;
         if (cam != null)
         {
@@ -33,20 +31,17 @@ public class NeonDriveSetup : EditorWindow
                 cam.gameObject.AddComponent<CameraShake>();
         }
 
-        // GameManager
         if (GameObject.Find("GameManager") == null)
         {
             var gm = new GameObject("GameManager");
             gm.AddComponent<GameManager>();
         }
 
-        // 도로 (기존 오브젝트 제거 후 생성)
         DestroyIfExists("Road");
         DestroyIfExists("Road2");
         CreateRoad("Road",  new Vector3(0,  0, 1));
         CreateRoad("Road2", new Vector3(0, 20, 1));
 
-        // 차선 구분선
         float[] laneX = { -2.1f, -0.7f, 0.7f, 2.1f };
         for (int i = 0; i < laneX.Length; i++)
         {
@@ -54,20 +49,17 @@ public class NeonDriveSetup : EditorWindow
             CreateLaneLine("Lane" + (i + 1), laneX[i]);
         }
 
-        // 플레이어
         DestroyIfExists("Player");
         var player = CreateSquareSprite("Player",
             new Vector3(0, -6, 0),
             new Vector3(0.75f, 1.3f, 1f),
             new Color(0f, 1f, 0.78f));
 
-        // PlayerController 커포넌트는 [RequireComponent(Rigidbody2D)] 이라
-        // AddComponent 시 Rigidbody2D가 자동 추가됨
+        // [RequireComponent(Rigidbody2D)] 로 인해 PlayerController 추가 시 Rigidbody2D 자동 생성됨
         var pc = player.AddComponent<PlayerController>();
         pc.LaneWidth = 1.4f;
         pc.TotalLanes = 4;
 
-        // 이미 자동 추가된 Rigidbody2D를 GetComponent로 가져옴
         var rb = player.GetComponent<Rigidbody2D>();
         if (rb == null) rb = player.AddComponent<Rigidbody2D>();
         rb.gravityScale = 0f;
@@ -76,7 +68,6 @@ public class NeonDriveSetup : EditorWindow
         var col = player.AddComponent<BoxCollider2D>();
         col.isTrigger = true;
 
-        // 스폰너
         if (GameObject.Find("TrafficSpawner") == null)
         {
             var ts = new GameObject("TrafficSpawner");
@@ -88,12 +79,10 @@ public class NeonDriveSetup : EditorWindow
             cs.AddComponent<CoinSpawner>();
         }
 
-        // 프리팩
         EnsureFolder("Assets/Prefabs");
         CreateTrafficPrefab();
         CreateCoinPrefab();
 
-        // UI
         DestroyIfExists("Canvas");
         SetupUI();
 
@@ -102,8 +91,6 @@ public class NeonDriveSetup : EditorWindow
             "✅ 세팅 완료!\nCtrl+S 로 저장하고 플레이 버튼을 눌러보세요!",
             "확인");
     }
-
-    // -------------------------------------------------------
 
     static void CreateRoad(string name, Vector3 pos)
     {
@@ -132,11 +119,19 @@ public class NeonDriveSetup : EditorWindow
 
     static Sprite GetWhiteSprite()
     {
-        var sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd");
-        if (sprite != null) return sprite;
-        sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        if (sprite != null) return sprite;
-        return null;
+        var s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd");
+        if (s != null) return s;
+        s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        return s;
+    }
+
+    static Sprite GetCircleSprite()
+    {
+        // UI Knob 스프라이트 (원형)
+        var s = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+        if (s != null) return s;
+        // 폴백: 사각형 스프라이트 사용
+        return GetWhiteSprite();
     }
 
     static void CreateTrafficPrefab()
@@ -167,7 +162,7 @@ public class NeonDriveSetup : EditorWindow
         var go = new GameObject("Coin");
         go.transform.localScale = new Vector3(0.6f, 0.6f, 1f);
         var sr = go.AddComponent<SpriteRenderer>();
-        sr.sprite = Resources.GetBuiltinResource<Sprite>("Sprites/Knob.png");
+        sr.sprite = GetCircleSprite();  // Knob.psd 원형 스프라이트
         sr.color = new Color(1f, 0.84f, 0f);
         go.AddComponent<CoinController>();
         var c = go.AddComponent<CircleCollider2D>();
@@ -196,13 +191,12 @@ public class NeonDriveSetup : EditorWindow
         scaler.referenceResolution = new Vector2(1080, 1920);
         canvasGO.AddComponent<GraphicRaycaster>();
 
-        // HUD
         var hud = new GameObject("HUD");
         hud.transform.SetParent(canvasGO.transform, false);
         SetFullStretch(hud);
 
-        var coinsGO  = MakeTMPText(hud, "CoinsText",    "0",       new Vector2(0.5f, 1f), new Vector2(0, -100), 40, Color.yellow);
-        var distGO   = MakeTMPText(hud, "DistanceText", "0.0 km",  new Vector2(1f,   1f), new Vector2(-50, -100), 32, new Color(0f, 1f, 0.78f));
+        var coinsGO = MakeTMPText(hud, "CoinsText",    "0",      new Vector2(0.5f, 1f), new Vector2(0, -100),   40, Color.yellow);
+        var distGO  = MakeTMPText(hud, "DistanceText", "0.0 km", new Vector2(1f,   1f), new Vector2(-50, -100), 32, new Color(0f, 1f, 0.78f));
 
         var heartsGO = new GameObject("Hearts");
         heartsGO.transform.SetParent(hud.transform, false);
@@ -225,17 +219,15 @@ public class NeonDriveSetup : EditorWindow
             heartImages[i] = img;
         }
 
-        // GameOver Panel
         var goPanel = MakePanel(canvasGO, "GameOverPanel", new Color(0.027f, 0.027f, 0.078f, 0.95f));
-        MakeTMPText(goPanel, "CrashText",    "CRASH!",  new Vector2(0.5f, 0.65f), Vector2.zero, 80, new Color(1f, 0.18f, 0.47f));
-        var goCoinsGO = MakeTMPText(goPanel, "GOCoinsText",  "0",       new Vector2(0.5f, 0.52f), Vector2.zero, 44, Color.yellow);
-        var goDistGO  = MakeTMPText(goPanel, "GODistText",   "0.00 km", new Vector2(0.5f, 0.44f), Vector2.zero, 44, new Color(0f, 1f, 0.78f));
-        MakeButton(goPanel, "ReviveBtn",  "REVIVE", new Vector2(0.5f, 0.32f), new Color(0f, 1f, 0.78f));
-        MakeButton(goPanel, "RetryBtn",   "RETRY",  new Vector2(0.5f, 0.22f), new Color(0.47f, 0.18f, 1f));
-        MakeButton(goPanel, "HomeBtn",    "HOME",   new Vector2(0.5f, 0.12f), new Color(0.4f, 0.4f, 0.5f));
+        MakeTMPText(goPanel, "CrashText",   "CRASH!",  new Vector2(0.5f, 0.65f), Vector2.zero, 80, new Color(1f, 0.18f, 0.47f));
+        var goCoinsGO = MakeTMPText(goPanel, "GOCoinsText", "0",       new Vector2(0.5f, 0.52f), Vector2.zero, 44, Color.yellow);
+        var goDistGO  = MakeTMPText(goPanel, "GODistText",  "0.00 km", new Vector2(0.5f, 0.44f), Vector2.zero, 44, new Color(0f, 1f, 0.78f));
+        MakeButton(goPanel, "ReviveBtn", "REVIVE", new Vector2(0.5f, 0.32f), new Color(0f, 1f, 0.78f));
+        MakeButton(goPanel, "RetryBtn",  "RETRY",  new Vector2(0.5f, 0.22f), new Color(0.47f, 0.18f, 1f));
+        MakeButton(goPanel, "HomeBtn",   "HOME",   new Vector2(0.5f, 0.12f), new Color(0.4f, 0.4f, 0.5f));
         goPanel.SetActive(false);
 
-        // Joystick
         var jGO = new GameObject("Joystick");
         jGO.transform.SetParent(canvasGO.transform, false);
         var jRect = jGO.AddComponent<RectTransform>();
@@ -266,20 +258,16 @@ public class NeonDriveSetup : EditorWindow
         joystick.Handle = hRect;
         joystick.HorizontalOnly = true;
 
-        // UIManager
         var uiGO = new GameObject("UIManager");
         uiGO.transform.SetParent(canvasGO.transform, false);
         var uiMgr = uiGO.AddComponent<UIManager>();
-        uiMgr.CoinsText    = coinsGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.DistanceText = distGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.HeartIcons   = heartImages;
-        uiMgr.GameOverPanel    = goPanel;
-        uiMgr.GOCoinsText      = goCoinsGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.GODistanceText   = goDistGO.GetComponent<TextMeshProUGUI>();
+        uiMgr.CoinsText      = coinsGO.GetComponent<TextMeshProUGUI>();
+        uiMgr.DistanceText   = distGO.GetComponent<TextMeshProUGUI>();
+        uiMgr.HeartIcons     = heartImages;
+        uiMgr.GameOverPanel  = goPanel;
+        uiMgr.GOCoinsText    = goCoinsGO.GetComponent<TextMeshProUGUI>();
+        uiMgr.GODistanceText = goDistGO.GetComponent<TextMeshProUGUI>();
     }
-
-    // -------------------------------------------------------
-    // 헬퍼
 
     static GameObject MakePanel(GameObject parent, string name, Color color)
     {
