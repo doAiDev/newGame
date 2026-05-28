@@ -73,7 +73,7 @@ class _NeonButtonState extends State<NeonButton>
       onTapCancel: widget.enabled ? () => _controller.reverse() : null,
       child: AnimatedBuilder(
         animation: _controller,
-        builder: (_, child) => Transform.scale(
+        builder: (_, __) => Transform.scale(
           scale: _scale.value,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
@@ -94,33 +94,27 @@ class _NeonButtonState extends State<NeonButton>
                     ]
                   : null,
             ),
-            child: child,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (widget.icon != null) ...[{
-              'icon': widget.icon,
-            }].map((_) => Row(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(widget.icon, color: _effectiveColor, size: widget.fontSize + 4),
-                const SizedBox(width: 8),
+                if (widget.icon != null) ...[                  Icon(widget.icon!, color: _effectiveColor, size: widget.fontSize + 4),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  widget.label,
+                  style: GoogleFonts.orbitron(
+                    color: _effectiveColor,
+                    fontSize: widget.fontSize,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    shadows: widget.enabled
+                        ? [Shadow(color: _effectiveColor, blurRadius: 8)]
+                        : null,
+                  ),
+                ),
               ],
-            )).first,
-            Text(
-              widget.label,
-              style: GoogleFonts.orbitron(
-                color: _effectiveColor,
-                fontSize: widget.fontSize,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
-                shadows: widget.enabled
-                    ? [Shadow(color: _effectiveColor, blurRadius: 8)]
-                    : null,
-              ),
             ),
-          ],
+          ),
         ),
       ),
     );
