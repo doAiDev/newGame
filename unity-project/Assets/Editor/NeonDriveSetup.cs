@@ -10,6 +10,12 @@ public class NeonDriveSetup : EditorWindow
     [MenuItem("NeonDrive/게임 씨 자동 세팅")]
     public static void SetupScene()
     {
+        if (EditorApplication.isPlaying)
+        {
+            EditorUtility.DisplayDialog("Neon Drive Setup", "플레이 모드를 먼저 종료하세요.", "확인");
+            return;
+        }
+
         if (!EditorUtility.DisplayDialog("Neon Drive Setup",
             "현재 씨을 Neon Drive 게임 씨으로 세팅합니다.",
             "세팅 시작", "취소"))
@@ -45,6 +51,7 @@ public class NeonDriveSetup : EditorWindow
         CreateRoad("Road",  new Vector3(0,  0, 1));
         CreateRoad("Road2", new Vector3(0, 20, 1));
 
+        // 도로 양옹 구분선 (더 밝게)
         float[] laneX = { -2.1f, -0.7f, 0.7f, 2.1f };
         for (int i = 0; i < laneX.Length; i++)
         {
@@ -70,6 +77,7 @@ public class NeonDriveSetup : EditorWindow
         var col = player.AddComponent<BoxCollider2D>();
         col.isTrigger = true;
 
+        // 스폰너는 프리팩 생성 후에 생성해야 SerializedObject 할당이 동작함
         if (GameObject.Find("TrafficSpawner") == null)
         {
             var ts = new GameObject("TrafficSpawner");
@@ -82,15 +90,19 @@ public class NeonDriveSetup : EditorWindow
         }
 
         EnsureAssetFolder("Assets/Prefabs");
-        CreateTrafficPrefab();
-        CreateCoinPrefab();
+        var trafficPrefab = CreateTrafficPrefab();
+        var coinPrefab    = CreateCoinPrefab();
+
+        // SerializedObject로 스폰너에 프리팩 할당 (저장 보장)
+        AssignTrafficPrefab(trafficPrefab);
+        AssignCoinPrefab(coinPrefab);
 
         DestroyIfExists("Canvas");
         SetupUI();
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         EditorUtility.DisplayDialog("Neon Drive Setup",
-            "✅ 세팅 완료!\nCtrl+S 로 저장하고 플레이 버튼을 눌러보세요!",
+            "✅ 세팅 완료!\nCtrl+S 로 저장하고 Game 뷰 비율을 9:16으로 설정한 뒤\n플레이 버튼을 눌러보세요!",
             "확인");
     }
 
@@ -98,15 +110,16 @@ public class NeonDriveSetup : EditorWindow
 
     static void CreateRoad(string name, Vector3 pos)
     {
+        // 도로를 배경보다 확실히 밝게
         var road = CreateSquareSprite(name, pos,
-            new Vector3(5.8f, 20f, 1f), new Color(0.1f, 0.1f, 0.18f));
+            new Vector3(5.8f, 20f, 1f), new Color(0.18f, 0.18f, 0.28f));
         road.AddComponent<RoadScroller>();
     }
 
     static void CreateLaneLine(string name, float x)
     {
         var line = CreateSquareSprite(name, new Vector3(x, 0, 0.5f),
-            new Vector3(0.03f, 20f, 1f), new Color(0.47f, 0.18f, 1f, 0.25f));
+            new Vector3(0.06f, 20f, 1f), new Color(0.6f, 0.3f, 1f, 0.4f));
         line.AddComponent<RoadScroller>();
     }
 
@@ -171,7 +184,7 @@ public class NeonDriveSetup : EditorWindow
         return AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
     }
 
-    static void CreateTrafficPrefab()
+    static GameObject CreateTrafficPrefab()
     {
         const string path = "Assets/Prefabs/TrafficCar.prefab";
         var go = new GameObject("TrafficCar");
@@ -183,19 +196,16 @@ public class NeonDriveSetup : EditorWindow
         var c = go.AddComponent<BoxCollider2D>();
         c.isTrigger = true;
 
-        PrefabUtility.SaveAsPrefabAsset(go, path);
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
 
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         if (prefab != null) prefab.tag = "Traffic";
         EditorUtility.SetDirty(prefab);
         AssetDatabase.SaveAssets();
-
-        var spawner = Object.FindObjectOfType<TrafficSpawner>();
-        if (spawner != null) spawner.CarPrefabs = new GameObject[] { prefab };
+        return prefab;
     }
 
-    static void CreateCoinPrefab()
+    static GameObject CreateCoinPrefab()
     {
         const string path = "Assets/Prefabs/Coin.prefab";
         var go = new GameObject("Coin");
@@ -207,16 +217,37 @@ public class NeonDriveSetup : EditorWindow
         var c = go.AddComponent<CircleCollider2D>();
         c.isTrigger = true;
 
-        PrefabUtility.SaveAsPrefabAsset(go, path);
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
 
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
         if (prefab != null) prefab.tag = "Coin";
         EditorUtility.SetDirty(prefab);
         AssetDatabase.SaveAssets();
+        return prefab;
+    }
 
+    static void AssignTrafficPrefab(GameObject prefab)
+    {
+        if (prefab == null) return;
+        var spawner = Object.FindObjectOfType<TrafficSpawner>();
+        if (spawner == null) return;
+        var so = new SerializedObject(spawner);
+        var prop = so.FindProperty("CarPrefabs");
+        prop.arraySize = 1;
+        prop.GetArrayElementAtIndex(0).objectReferenceValue = prefab;
+        so.ApplyModifiedProperties();
+        EditorUtility.SetDirty(spawner);
+    }
+
+    static void AssignCoinPrefab(GameObject prefab)
+    {
+        if (prefab == null) return;
         var spawner = Object.FindObjectOfType<CoinSpawner>();
-        if (spawner != null) spawner.CoinPrefab = prefab;
+        if (spawner == null) return;
+        var so = new SerializedObject(spawner);
+        so.FindProperty("CoinPrefab").objectReferenceValue = prefab;
+        so.ApplyModifiedProperties();
+        EditorUtility.SetDirty(spawner);
     }
 
     static void SetupUI()
@@ -229,7 +260,6 @@ public class NeonDriveSetup : EditorWindow
         scaler.referenceResolution = new Vector2(1080, 1920);
         canvasGO.AddComponent<GraphicRaycaster>();
 
-        // HUD
         var hud = new GameObject("HUD");
         hud.transform.SetParent(canvasGO.transform, false);
         SetFullStretch(hud);
@@ -258,7 +288,6 @@ public class NeonDriveSetup : EditorWindow
             heartImages[i] = img;
         }
 
-        // GameOver Panel
         var goPanel = MakePanel(canvasGO, "GameOverPanel", new Color(0.027f, 0.027f, 0.078f, 0.95f));
         MakeTMPText(goPanel, "CrashText",   "CRASH!",  new Vector2(0.5f, 0.65f), Vector2.zero, 80, new Color(1f, 0.18f, 0.47f));
         var goCoinsGO = MakeTMPText(goPanel, "GOCoinsText", "0",       new Vector2(0.5f, 0.52f), Vector2.zero, 44, Color.yellow);
@@ -268,14 +297,12 @@ public class NeonDriveSetup : EditorWindow
         MakeButton(goPanel, "HomeBtn",   "HOME",   new Vector2(0.5f, 0.12f), new Color(0.4f, 0.4f, 0.5f));
         goPanel.SetActive(false);
 
-        // Pause Panel
         var pausePanel = MakePanel(canvasGO, "PausePanel", new Color(0.027f, 0.027f, 0.078f, 0.92f));
         MakeTMPText(pausePanel, "PauseTitle", "PAUSED", new Vector2(0.5f, 0.6f), Vector2.zero, 80, new Color(0f, 1f, 0.78f));
-        MakeButton(pausePanel, "ResumeBtn", "RESUME", new Vector2(0.5f, 0.45f), new Color(0f, 1f, 0.78f));
-        MakeButton(pausePanel, "PauseHomeBtn", "HOME", new Vector2(0.5f, 0.33f), new Color(0.4f, 0.4f, 0.5f));
+        MakeButton(pausePanel, "ResumeBtn",   "RESUME", new Vector2(0.5f, 0.45f), new Color(0f, 1f, 0.78f));
+        MakeButton(pausePanel, "PauseHomeBtn","HOME",   new Vector2(0.5f, 0.33f), new Color(0.4f, 0.4f, 0.5f));
         pausePanel.SetActive(false);
 
-        // Joystick
         var jGO = new GameObject("Joystick");
         jGO.transform.SetParent(canvasGO.transform, false);
         var jRect = jGO.AddComponent<RectTransform>();
@@ -288,8 +315,7 @@ public class NeonDriveSetup : EditorWindow
         var bgImg = bgGO.AddComponent<Image>();
         bgImg.color = new Color(1f, 1f, 1f, 0.07f);
         var bgRect = bgGO.GetComponent<RectTransform>();
-        bgRect.anchorMin = Vector2.zero;
-        bgRect.anchorMax = Vector2.one;
+        bgRect.anchorMin = Vector2.zero; bgRect.anchorMax = Vector2.one;
         bgRect.offsetMin = bgRect.offsetMax = Vector2.zero;
 
         var hGO = new GameObject("Handle");
@@ -306,21 +332,27 @@ public class NeonDriveSetup : EditorWindow
         joystick.Handle = hRect;
         joystick.HorizontalOnly = true;
 
-        // UIManager
         var uiGO = new GameObject("UIManager");
         uiGO.transform.SetParent(canvasGO.transform, false);
         var uiMgr = uiGO.AddComponent<UIManager>();
-        uiMgr.CoinsText      = coinsGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.DistanceText   = distGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.HeartIcons     = heartImages;
-        uiMgr.GameOverPanel  = goPanel;
-        uiMgr.GOCoinsText    = goCoinsGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.GODistanceText = goDistGO.GetComponent<TextMeshProUGUI>();
-        uiMgr.PausePanel     = pausePanel;
+
+        var so2 = new SerializedObject(uiMgr);
+        so2.FindProperty("CoinsText").objectReferenceValue      = coinsGO.GetComponent<TextMeshProUGUI>();
+        so2.FindProperty("DistanceText").objectReferenceValue   = distGO.GetComponent<TextMeshProUGUI>();
+        so2.FindProperty("GameOverPanel").objectReferenceValue  = goPanel;
+        so2.FindProperty("GOCoinsText").objectReferenceValue    = goCoinsGO.GetComponent<TextMeshProUGUI>();
+        so2.FindProperty("GODistanceText").objectReferenceValue = goDistGO.GetComponent<TextMeshProUGUI>();
+        so2.FindProperty("PausePanel").objectReferenceValue     = pausePanel;
+
+        var heartsProp = so2.FindProperty("HeartIcons");
+        heartsProp.arraySize = heartImages.Length;
+        for (int i = 0; i < heartImages.Length; i++)
+            heartsProp.GetArrayElementAtIndex(i).objectReferenceValue = heartImages[i];
+        so2.ApplyModifiedProperties();
+        EditorUtility.SetDirty(uiMgr);
     }
 
     // -------------------------------------------------------
-    // 헬퍼
 
     static GameObject MakePanel(GameObject parent, string name, Color color)
     {
@@ -337,9 +369,7 @@ public class NeonDriveSetup : EditorWindow
         var go = new GameObject(name);
         go.transform.SetParent(parent.transform, false);
         var tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text = text;
-        tmp.fontSize = size;
-        tmp.color = color;
+        tmp.text = text; tmp.fontSize = size; tmp.color = color;
         tmp.alignment = TextAlignmentOptions.Center;
         var r = go.GetComponent<RectTransform>();
         r.anchorMin = r.anchorMax = anchor;
@@ -364,13 +394,10 @@ public class NeonDriveSetup : EditorWindow
         var tgo = new GameObject("Label");
         tgo.transform.SetParent(go.transform, false);
         var tmp = tgo.AddComponent<TextMeshProUGUI>();
-        tmp.text = label;
-        tmp.fontSize = 36;
-        tmp.color = color;
+        tmp.text = label; tmp.fontSize = 36; tmp.color = color;
         tmp.alignment = TextAlignmentOptions.Center;
         var tr = tgo.GetComponent<RectTransform>();
-        tr.anchorMin = Vector2.zero;
-        tr.anchorMax = Vector2.one;
+        tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one;
         tr.offsetMin = tr.offsetMax = Vector2.zero;
     }
 
@@ -378,8 +405,7 @@ public class NeonDriveSetup : EditorWindow
     {
         var r = go.GetComponent<RectTransform>();
         if (r == null) r = go.AddComponent<RectTransform>();
-        r.anchorMin = Vector2.zero;
-        r.anchorMax = Vector2.one;
+        r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
         r.offsetMin = r.offsetMax = Vector2.zero;
     }
 
