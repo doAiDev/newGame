@@ -8,7 +8,7 @@ public class PlayerController : MonoBehaviour
     public float LaneWidth = 2.0f;
 
     [Header("Movement")]
-    public float MoveSmoothness = 10f;
+    public float MoveSmoothness = 18f;
 
     [Header("Effects")]
     public ParticleSystem ThrusterParticles;
@@ -43,7 +43,7 @@ public class PlayerController : MonoBehaviour
         float input = _joystick != null ? _joystick.Horizontal : 0f;
         if (Mathf.Abs(input) > 0.1f)
         {
-            _targetX += input * GameManager.Instance.Speed * 0.28f * Time.deltaTime;
+            _targetX += input * GameManager.Instance.Speed * 0.65f * Time.deltaTime;
             _targetX = Mathf.Clamp(_targetX, _leftBound, _rightBound);
         }
     }
