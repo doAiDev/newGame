@@ -1,7 +1,6 @@
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+public class Joystick : MonoBehaviour
 {
     public RectTransform Background;
     public RectTransform Handle;
@@ -13,43 +12,62 @@ public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoint
     public float Vertical   { get; private set; }
 
     private Canvas _canvas;
-    private Vector2 _input;
 
     void Start()
     {
         _canvas = GetComponentInParent<Canvas>();
     }
 
-    public void OnPointerDown(PointerEventData e) => OnDrag(e);
-
-    public void OnDrag(PointerEventData e)
+    void Update()
     {
-        Vector2 pos    = RectTransformUtility.WorldToScreenPoint(_canvas.worldCamera, Background.position);
-        Vector2 radius = Background.rect.size / 2f * _canvas.scaleFactor;
-        if (radius.sqrMagnitude < 0.001f) return; // guard against zero-size
-
-        _input = (e.position - pos) / radius;
-
-        if (HorizontalOnly) _input.y = 0f;
-        if (_input.magnitude > DeadZone)
+        if (Input.GetMouseButton(0))
         {
-            if (_input.magnitude > 1f) _input = _input.normalized;
+            Vector2 touchPos = new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+            // only respond to touches in the lower 60% of screen (avoid UI buttons at top)
+            if (touchPos.y < Screen.height * 0.6f)
+                ProcessInput(touchPos);
+            else
+                Release();
         }
         else
         {
-            _input = Vector2.zero;
+            Release();
         }
-
-        Handle.anchoredPosition = _input * Background.rect.size / 2f * HandleRange;
-        Horizontal = _input.x;
-        Vertical   = _input.y;
     }
 
-    public void OnPointerUp(PointerEventData e)
+    void Release()
     {
-        _input = Vector2.zero;
-        Handle.anchoredPosition = Vector2.zero;
         Horizontal = 0f;
         Vertical   = 0f;
+        if (Handle) Handle.anchoredPosition = Vector2.zero;
+    }
+
+    void ProcessInput(Vector2 touchPos)
+    {
+        if (Background == null || _canvas == null) return;
+
+        Vector2 center = RectTransformUtility.WorldToScreenPoint(_canvas.worldCamera, Background.position);
+        float radius = Background.rect.width / 2f * _canvas.scaleFactor;
+        if (radius < 1f) return;
+
+        Vector2 delta = touchPos - center;
+        if (HorizontalOnly) delta.y = 0f;
+
+        Vector2 norm = delta / radius;
+        if (norm.magnitude > 1f) norm = norm.normalized;
+
+        if (norm.magnitude > DeadZone)
+        {
+            Horizontal = norm.x;
+            Vertical   = norm.y;
+        }
+        else
+        {
+            Horizontal = 0f;
+            Vertical   = 0f;
+        }
+
+        if (Handle)
+            Handle.anchoredPosition = norm * Background.rect.size / 2f * HandleRange;
     }
 }
