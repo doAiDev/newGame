@@ -24,8 +24,9 @@ public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoint
 
     public void OnDrag(PointerEventData e)
     {
-        Vector2 pos = RectTransformUtility.WorldToScreenPoint(_canvas.worldCamera, Background.position);
-        Vector2 radius = Background.sizeDelta / 2f * _canvas.scaleFactor;
+        Vector2 pos    = RectTransformUtility.WorldToScreenPoint(_canvas.worldCamera, Background.position);
+        Vector2 radius = Background.rect.size / 2f * _canvas.scaleFactor;
+        if (radius.sqrMagnitude < 0.001f) return; // guard against zero-size
 
         _input = (e.position - pos) / radius;
 
@@ -39,7 +40,7 @@ public class Joystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPoint
             _input = Vector2.zero;
         }
 
-        Handle.anchoredPosition = _input * Background.sizeDelta / 2f * HandleRange;
+        Handle.anchoredPosition = _input * Background.rect.size / 2f * HandleRange;
         Horizontal = _input.x;
         Vertical   = _input.y;
     }
