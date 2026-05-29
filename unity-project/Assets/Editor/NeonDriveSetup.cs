@@ -51,7 +51,8 @@ public class NeonDriveSetup : EditorWindow
         CreateRoad("Road",  new Vector3(0,  0, 1));
         CreateRoad("Road2", new Vector3(0, 20, 1));
 
-        float[] laneX = { -2.1f, -0.7f, 0.7f, 2.1f };
+        // 3 lanes: -2.0, 0.0, +2.0  (includes center lane)
+        float[] laneX = { -2.0f, 0.0f, 2.0f };
         for (int i = 0; i < laneX.Length; i++)
         {
             DestroyIfExists("Lane" + (i + 1));
@@ -66,8 +67,8 @@ public class NeonDriveSetup : EditorWindow
         pSR.sortingOrder = 2;
 
         var pc = player.AddComponent<PlayerController>();
-        pc.LaneWidth = 1.4f;
-        pc.TotalLanes = 4;
+        pc.LaneWidth = 2.0f;
+        pc.TotalLanes = 3;
 
         var rb = player.GetComponent<Rigidbody2D>();
         if (rb == null) rb = player.AddComponent<Rigidbody2D>();
@@ -170,7 +171,7 @@ public class NeonDriveSetup : EditorWindow
 
     static void CreateRoad(string name, Vector3 pos)
     {
-        var road = CreateRectSprite(name, pos, new Vector3(5.8f,20f,1f), new Color(0.18f,0.18f,0.28f));
+        var road = CreateRectSprite(name, pos, new Vector3(6.4f,20f,1f), new Color(0.18f,0.18f,0.28f));
         road.AddComponent<RoadScroller>();
     }
 
@@ -279,6 +280,8 @@ public class NeonDriveSetup : EditorWindow
         var prop=so.FindProperty("CarPrefabs");
         prop.arraySize=prefabs.Length;
         for(int i=0;i<prefabs.Length;i++) prop.GetArrayElementAtIndex(i).objectReferenceValue=prefabs[i];
+        so.FindProperty("Lanes").intValue=3;
+        so.FindProperty("LaneWidth").floatValue=2.0f;
         so.ApplyModifiedProperties(); EditorUtility.SetDirty(spawner);
     }
 
@@ -288,6 +291,8 @@ public class NeonDriveSetup : EditorWindow
         var spawner=Object.FindObjectOfType<CoinSpawner>(); if(spawner==null) return;
         var so=new SerializedObject(spawner);
         so.FindProperty("CoinPrefab").objectReferenceValue=prefab;
+        so.FindProperty("Lanes").intValue=3;
+        so.FindProperty("LaneWidth").floatValue=2.0f;
         so.ApplyModifiedProperties(); EditorUtility.SetDirty(spawner);
     }
 
@@ -295,7 +300,7 @@ public class NeonDriveSetup : EditorWindow
 
     static void SetupUI()
     {
-        // EventSystem - 터치/클릭 이벤트에 필수
+        // EventSystem - touch/click events require this
         var esGO = new GameObject("EventSystem");
         esGO.AddComponent<EventSystem>();
         esGO.AddComponent<StandaloneInputModule>();
@@ -308,6 +313,7 @@ public class NeonDriveSetup : EditorWindow
         scaler.referenceResolution=new Vector2(1080,1920);
         canvasGO.AddComponent<GraphicRaycaster>();
 
+        // ── HUD (shown only during gameplay) ──
         var hud=new GameObject("HUD");
         hud.transform.SetParent(canvasGO.transform,false);
         SetFullStretch(hud);
@@ -333,22 +339,12 @@ public class NeonDriveSetup : EditorWindow
             heartImages[i]=img;
         }
 
-        var goPanel=MakePanel(canvasGO,"GameOverPanel",new Color(0.027f,0.027f,0.078f,0.95f));
-        MakeTMPText(goPanel,"CrashText","CRASH!",new Vector2(0.5f,0.65f),Vector2.zero,80,new Color(1f,0.18f,0.47f));
-        var goCoinsGO=MakeTMPText(goPanel,"GOCoinsText","0",new Vector2(0.5f,0.52f),Vector2.zero,44,Color.yellow);
-        var goDistGO=MakeTMPText(goPanel,"GODistText","0.00 km",new Vector2(0.5f,0.44f),Vector2.zero,44,new Color(0f,1f,0.78f));
-        MakeButton(goPanel,"ReviveBtn","REVIVE",new Vector2(0.5f,0.32f),new Color(0f,1f,0.78f));
-        MakeButton(goPanel,"RetryBtn","RETRY",new Vector2(0.5f,0.22f),new Color(0.47f,0.18f,1f));
-        MakeButton(goPanel,"HomeBtn","HOME",new Vector2(0.5f,0.12f),new Color(0.4f,0.4f,0.5f));
-        goPanel.SetActive(false);
+        // Pause button (top-right in HUD)
+        MakeIconButton(hud,"PauseBtn","II",new Vector2(1f,1f),new Vector2(-60,-80),100,new Color(0f,1f,0.78f));
 
-        var pausePanel=MakePanel(canvasGO,"PausePanel",new Color(0.027f,0.027f,0.078f,0.92f));
-        MakeTMPText(pausePanel,"PauseTitle","PAUSED",new Vector2(0.5f,0.6f),Vector2.zero,80,new Color(0f,1f,0.78f));
-        MakeButton(pausePanel,"ResumeBtn","RESUME",new Vector2(0.5f,0.45f),new Color(0f,1f,0.78f));
-        MakeButton(pausePanel,"PauseHomeBtn","HOME",new Vector2(0.5f,0.33f),new Color(0.4f,0.4f,0.5f));
-        pausePanel.SetActive(false);
+        hud.SetActive(false); // hidden until game starts
 
-        // 조이스틱
+        // ── Joystick (always visible, but player locked in HOME state) ──
         var jGO=new GameObject("Joystick");
         jGO.transform.SetParent(canvasGO.transform,false);
         var jRect=jGO.AddComponent<RectTransform>();
@@ -373,10 +369,46 @@ public class NeonDriveSetup : EditorWindow
         var joystick=jGO.AddComponent<Joystick>();
         joystick.Background=bgRect; joystick.Handle=hRect; joystick.HorizontalOnly=true;
 
+        // ── Game Over Panel ──
+        var goPanel=MakePanel(canvasGO,"GameOverPanel",new Color(0.027f,0.027f,0.078f,0.95f));
+        MakeTMPText(goPanel,"CrashText","CRASH!",new Vector2(0.5f,0.65f),Vector2.zero,80,new Color(1f,0.18f,0.47f));
+        var goCoinsGO=MakeTMPText(goPanel,"GOCoinsText","0",new Vector2(0.5f,0.52f),Vector2.zero,44,Color.yellow);
+        var goDistGO=MakeTMPText(goPanel,"GODistText","0.00 km",new Vector2(0.5f,0.44f),Vector2.zero,44,new Color(0f,1f,0.78f));
+        MakeButton(goPanel,"ReviveBtn","REVIVE",new Vector2(0.5f,0.32f),new Color(0f,1f,0.78f));
+        MakeButton(goPanel,"RetryBtn","RETRY",new Vector2(0.5f,0.22f),new Color(0.47f,0.18f,1f));
+        MakeButton(goPanel,"HomeBtn","HOME",new Vector2(0.5f,0.12f),new Color(0.4f,0.4f,0.5f));
+        goPanel.SetActive(false);
+
+        // ── Pause Panel ──
+        var pausePanel=MakePanel(canvasGO,"PausePanel",new Color(0.027f,0.027f,0.078f,0.92f));
+        MakeTMPText(pausePanel,"PauseTitle","PAUSED",new Vector2(0.5f,0.6f),Vector2.zero,80,new Color(0f,1f,0.78f));
+        MakeButton(pausePanel,"ResumeBtn","RESUME",new Vector2(0.5f,0.45f),new Color(0f,1f,0.78f));
+        MakeButton(pausePanel,"PauseHomeBtn","HOME",new Vector2(0.5f,0.33f),new Color(0.4f,0.4f,0.5f));
+        pausePanel.SetActive(false);
+
+        // ── Home Panel ──
+        var homePanel=MakePanel(canvasGO,"HomePanel",new Color(0.027f,0.027f,0.078f,0.88f));
+        MakeTMPText(homePanel,"GameTitle","NEON DRIVE",new Vector2(0.5f,0.72f),Vector2.zero,96,new Color(0f,1f,0.78f));
+        MakeTMPText(homePanel,"GameSubtitle","무한 레이싱",new Vector2(0.5f,0.66f),Vector2.zero,44,new Color(0.6f,0.3f,1f));
+        MakeButton(homePanel,"StartBtn","START",new Vector2(0.5f,0.48f),new Color(0f,1f,0.78f));
+        MakeButton(homePanel,"ShopBtn","SHOP",new Vector2(0.5f,0.37f),new Color(1f,0.85f,0.1f));
+        homePanel.SetActive(true);
+
+        // ── Shop Panel (stub) ──
+        var shopPanel=MakePanel(canvasGO,"ShopPanel",new Color(0.027f,0.027f,0.078f,0.97f));
+        MakeTMPText(shopPanel,"ShopTitle","자동차 상점",new Vector2(0.5f,0.72f),Vector2.zero,72,new Color(1f,0.85f,0.1f));
+        MakeTMPText(shopPanel,"ShopSoon","Coming Soon...",new Vector2(0.5f,0.55f),Vector2.zero,44,new Color(0.6f,0.6f,0.7f));
+        MakeButton(shopPanel,"CloseShopBtn","닫기",new Vector2(0.5f,0.18f),new Color(0.4f,0.4f,0.5f));
+        shopPanel.SetActive(false);
+
+        // ── UIManager ──
         var uiGO=new GameObject("UIManager");
         uiGO.transform.SetParent(canvasGO.transform,false);
         var uiMgr=uiGO.AddComponent<UIManager>();
         var so2=new SerializedObject(uiMgr);
+        so2.FindProperty("HomePanel").objectReferenceValue=homePanel;
+        so2.FindProperty("ShopPanel").objectReferenceValue=shopPanel;
+        so2.FindProperty("HUD").objectReferenceValue=hud;
         so2.FindProperty("CoinsText").objectReferenceValue=coinsGO.GetComponent<TextMeshProUGUI>();
         so2.FindProperty("DistanceText").objectReferenceValue=distGO.GetComponent<TextMeshProUGUI>();
         so2.FindProperty("GameOverPanel").objectReferenceValue=goPanel;
@@ -406,6 +438,20 @@ public class NeonDriveSetup : EditorWindow
         var r=go.GetComponent<RectTransform>();
         r.anchorMin=r.anchorMax=anchor; r.anchoredPosition=pos; r.sizeDelta=new Vector2(500,70);
         return go;
+    }
+
+    static void MakeIconButton(GameObject parent,string name,string icon,Vector2 anchor,Vector2 offset,float size,Color color)
+    {
+        var go=new GameObject(name); go.transform.SetParent(parent.transform,false);
+        go.AddComponent<Image>().color=new Color(color.r*.1f,color.g*.1f,color.b*.1f,.85f);
+        go.AddComponent<Button>();
+        var r=go.GetComponent<RectTransform>();
+        r.anchorMin=r.anchorMax=anchor; r.anchoredPosition=offset; r.sizeDelta=new Vector2(size,size);
+        var tgo=new GameObject("Icon"); tgo.transform.SetParent(go.transform,false);
+        var tmp=tgo.AddComponent<TextMeshProUGUI>();
+        tmp.text=icon; tmp.fontSize=32; tmp.color=color; tmp.alignment=TextAlignmentOptions.Center;
+        var tr=tgo.GetComponent<RectTransform>();
+        tr.anchorMin=Vector2.zero; tr.anchorMax=Vector2.one; tr.offsetMin=tr.offsetMax=Vector2.zero;
     }
 
     static void MakeButton(GameObject parent,string name,string label,Vector2 anchor,Color color)

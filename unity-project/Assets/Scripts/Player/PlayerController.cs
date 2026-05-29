@@ -4,8 +4,8 @@ using UnityEngine;
 public class PlayerController : MonoBehaviour
 {
     [Header("Lanes")]
-    public int TotalLanes = 4;
-    public float LaneWidth = 1.4f;
+    public int TotalLanes = 3;
+    public float LaneWidth = 2.0f;
 
     [Header("Movement")]
     public float MoveSmoothness = 10f;
@@ -38,6 +38,7 @@ public class PlayerController : MonoBehaviour
     void Update()
     {
         if (_isDead || GameManager.Instance == null) return;
+        if (GameManager.Instance.State != GameState.Playing) return;
 
         float input = _joystick != null ? _joystick.Horizontal : 0f;
         if (Mathf.Abs(input) > 0.1f)
@@ -56,6 +57,7 @@ public class PlayerController : MonoBehaviour
 
     void OnTriggerEnter2D(Collider2D other)
     {
+        if (GameManager.Instance == null || GameManager.Instance.State != GameState.Playing) return;
         if (other.CompareTag("Traffic"))
         {
             Destroy(other.gameObject);
