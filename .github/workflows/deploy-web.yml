@@ -1,55 +1,9 @@
-name: Deploy Web to GitHub Pages
-
+# Flutter web deploy disabled - replaced by Unity WebGL (deploy-webgl.yml)
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: true
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
-  build-and-deploy:
-    name: Flutter Web 빌드 및 배포
+  disabled:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - name: 소스 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Flutter 설정
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
-
-      - name: 패키지 설치
-        run: flutter pub get
-
-      - name: 웹 빌드
-        run: flutter build web --release --base-href /newGame/
-
-      - name: GitHub Pages 설정
-        uses: actions/configure-pages@v4
-
-      - name: 빌드 결과물 업로드
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
-      - name: GitHub Pages 배포
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: echo "Flutter web deploy is disabled"
