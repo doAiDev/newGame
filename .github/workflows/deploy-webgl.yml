@@ -3,7 +3,6 @@ name: Deploy Unity WebGL to GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['webgl-build/**']
   workflow_dispatch:
 
 permissions:
